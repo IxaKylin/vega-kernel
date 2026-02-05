@@ -2041,6 +2041,32 @@ spi_nor_search_part_by_id(const struct flash_info *parts, unsigned int nparts,
 	return NULL;
 }
 
+static int spi_nor_read_uid(struct mtd_info *mtd,  u_char *buf)
+{
+	struct spi_nor *nor = mtd_to_spi_nor(mtd);
+	u8 *uid = nor->bouncebuf;
+	unsigned int i;
+	int ret;
+
+	struct spi_mem_op op =
+		SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_RDUID, 1),
+			   SPI_MEM_OP_NO_ADDR,
+			   SPI_MEM_OP_DUMMY(4, 1),
+			   SPI_MEM_OP_DATA_IN(8, uid, 1));
+
+	ret = spi_mem_exec_op(nor->spimem, &op);
+
+	for (i = 0; i < 8; i++)
+		buf[i] = uid[i];
+
+	if (ret) {
+		dev_dbg(nor->dev, "error %d reading UID\n", ret);
+		return -1;
+	}
+
+	return 0;
+}
+
 static const struct flash_info *spi_nor_read_id(struct spi_nor *nor)
 {
 	const struct flash_info *info;
@@ -3151,6 +3177,7 @@ int spi_nor_scan(struct spi_nor *nor, const char *name,
 	mtd->_erase = spi_nor_erase;
 	mtd->_read = spi_nor_read;
 	mtd->_resume = spi_nor_resume;
+	mtd->_get_uid = spi_nor_read_uid;
 
 	if (nor->params->locking_ops) {
 		mtd->_lock = spi_nor_lock;
@@ -3374,6 +3401,16 @@ static void spi_nor_shutdown(struct spi_mem *spimem)
 	spi_nor_restore(nor);
 }
 
+struct mx_norflash_info {
+	unsigned int chip_id;
+	const char *name;
+};
+
+static const struct mx_norflash_info mx_norflash_info_tbl = {
+	.chip_id = 0xc2253a,
+	.name = "mx25u51245g",
+};
+
 /*
  * Do NOT add to this array without reading the following:
  *
@@ -3414,7 +3451,7 @@ static const struct spi_device_id spi_nor_dev_ids[] = {
 	{"m25p40"},	{"m25p80"},	{"m25p16"},	{"m25p32"},
 	{"m25p64"},	{"m25p128"},
 	{"w25x80"},	{"w25x32"},	{"w25q32"},	{"w25q32dw"},
-	{"w25q80bl"},	{"w25q128"},	{"w25q256"},
+	{"w25q80bl"},	{"w25q128"},	{"w25q256"}, {"mx25u51245g"}, {"mt25ql512a"},
 
 	/* Flashes that can't be detected using JEDEC */
 	{"m25p05-nonjedec"},	{"m25p10-nonjedec"},	{"m25p20-nonjedec"},
@@ -3437,6 +3474,8 @@ static const struct of_device_id spi_nor_of_table[] = {
 	 * JEDEC READ ID opcode (0x9F). Use this, if possible.
 	 */
 	{ .compatible = "jedec,spi-nor" },
+	{ .compatible = "Micron,mt25ql512a" },
+//	{ .compatible = "Macronix,mx25u51245g" },
 	{ /* sentinel */ },
 };
 MODULE_DEVICE_TABLE(of, spi_nor_of_table);

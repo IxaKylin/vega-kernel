@@ -355,7 +355,7 @@ struct mtd_info {
 	 */
 	int (*_get_device) (struct mtd_info *mtd);
 	void (*_put_device) (struct mtd_info *mtd);
-
+	int (*_get_uid)(struct mtd_info *mtd, u_char *buf);
 	/*
 	 * flag indicates a panic write, low level drivers can take appropriate
 	 * action if required to ensure writes go through
@@ -520,6 +520,8 @@ int mtd_lock_user_prot_reg(struct mtd_info *mtd, loff_t from, size_t len);
 
 int mtd_writev(struct mtd_info *mtd, const struct kvec *vecs,
 	       unsigned long count, loff_t to, size_t *retlen);
+
+int mtd_read_uid(struct mtd_info *mtd, u_char *buf);
 
 static inline void mtd_sync(struct mtd_info *mtd)
 {

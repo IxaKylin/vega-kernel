@@ -1330,6 +1330,17 @@ static int mtd_read_oob_std(struct mtd_info *mtd, loff_t from,
 	return ret;
 }
 
+int mtd_read_uid(struct mtd_info *mtd, u_char *buf)
+{
+	struct mtd_info *master = mtd_get_master(mtd);
+	int ret;
+
+	ret = master->_get_uid(master, buf);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mtd_read_uid);
+
 static int mtd_write_oob_std(struct mtd_info *mtd, loff_t to,
 			     struct mtd_oob_ops *ops)
 {

@@ -1177,6 +1177,7 @@ static const struct spi_device_id spinand_ids[] = {
 #ifdef CONFIG_OF
 static const struct of_device_id spinand_of_ids[] = {
 	{ .compatible = "spi-nand" },
+	{ .compatible = "GigaDevice,GD5F1GQ4UExxG" },
 	{ /* sentinel */ },
 };
 #endif
