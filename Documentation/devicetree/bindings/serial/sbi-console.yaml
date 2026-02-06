@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/serial/sbi-console.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: RISC-V SBI Console
+
+maintainers:
+  - support@nucleisys.com
+
+description: |
+  RISC-V SBI (Supervisor Binary Interface) console device for early
+  console output via SBI calls.
+
+properties:
+  compatible:
+    const: sbi,console
+
+required:
+  - compatible
+
+additionalProperties: false
+
+examples:
+  - |
+    console {
+      compatible = "sbi,console";
+    };
+
+...

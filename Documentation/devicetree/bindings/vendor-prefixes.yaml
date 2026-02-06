@@ -401,6 +401,8 @@ patternProperties:
     description: Giantec Semiconductor, Inc.
   "^giantplus,.*":
     description: Giantplus Technology Co., Ltd.
+  "^gigadevice,.*":
+    description: GigaDevice Semiconductor Inc.
   "^globalscale,.*":
     description: Globalscale Technologies, Inc.
   "^globaltop,.*":
@@ -734,6 +736,8 @@ patternProperties:
     description: New Vision Display
   "^nvidia,.*":
     description: NVIDIA
+  "^nuclei,.*":
+    description: Nuclei System Technologies
   "^nxp,.*":
     description: NXP Semiconductors
   "^oceanic,.*":
@@ -896,6 +900,8 @@ patternProperties:
     description: Sandisk Corporation
   "^satoz,.*":
     description: Satoz International Co., Ltd
+  "^sbi,.*":
+    description: RISC-V SBI
   "^sbs,.*":
     description: Smart Battery System
   "^schindler,.*":

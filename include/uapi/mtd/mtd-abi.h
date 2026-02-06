@@ -205,7 +205,8 @@ struct otp_info {
  * without OOB, e.g., NOR flash.
  */
 #define MEMWRITE		_IOWR('M', 24, struct mtd_write_req)
-
+/* Get the UID of the MTD device */
+#define MEMGETUID              _IOWR('M', 25, __u8*)
 /*
  * Obsolete legacy interface. Keep it in order not to break userspace
  * interfaces

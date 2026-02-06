@@ -112,6 +112,7 @@
 #define MX29F002T	0x00B0
 #define MX29F004T	0x0045
 #define MX29F004B	0x0046
+#define MX25Y51245G 0x253a
 
 /* NEC */
 #define UPD29F064115	0x221C
@@ -1177,6 +1178,18 @@ static const struct amd_flash_info jedec_table[] = {
 		.nr_regions	= 1,
 		.regions	= {
 			ERASEINFO(0x10000,8),
+		}
+	}, {
+		.mfr_id		= CFI_MFR_MACRONIX,
+		.dev_id		= MX25Y51245G,
+		.name		= "Macronix MX25Y51245G",
+		.devtypes	= CFI_DEVICETYPE_X8,
+		.uaddr		= MTD_UADDR_0x0555_0x02AA,
+		.dev_size	= SIZE_8MiB,
+		.cmd_set	= P_ID_AMD_STD,
+		.nr_regions	= 1,
+		.regions	= {
+			ERASEINFO(0x10000, 8),
 		}
 	}, {
 		.mfr_id		= CFI_MFR_MACRONIX,

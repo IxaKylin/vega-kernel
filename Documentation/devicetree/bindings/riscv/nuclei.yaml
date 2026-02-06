@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/riscv/nuclei.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Nuclei SoC-based boards
+
+maintainers:
+  - support@nucleisys.com
+
+description: |
+  Nuclei Technology SoC-based boards
+
+  The Nuclei UX600 series is a RISC-V-based SoC family with the following
+  features:
+    - Single core RV64IMAC[FDC] CPU
+    - Platform-Level Interrupt Controller (PLIC)
+    - UART, SPI, GPIO, I2C peripherals
+    - Ethernet controller
+    - Watchdog timer
+
+properties:
+  $nodename:
+    const: '/'
+
+  compatible:
+    oneOf:
+      - items:
+          - enum:
+              - nuclei,ux600-sim
+          - const: nuclei,ux600
+      - items:
+          - enum:
+              - nuclei,ux600fd-sim
+              - nuclei,ux600fd-entire
+              - nuclei,ux600fd-ramfs-jffs2
+          - const: nuclei,ux600fd
+
+additionalProperties: true
+
+...
