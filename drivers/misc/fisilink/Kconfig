@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Fisilink misc device configuration
+#
+
+config SWITCH_INTERFACE
+	tristate "FiberHome switch register access support"
+	depends on FISILINK
+	help
+	  This driver provides support for Xuanyuan1030M CPU to access
+	  FiberHome switch registers through a misc device interface.
+
+	  The driver provides register read/write operations, DMA buffer
+	  management, and memory mapping support for userspace access.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called fh_pcie2pata.
+
+	  If unsure, say Y.
