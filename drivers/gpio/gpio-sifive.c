@@ -18,18 +18,18 @@
 #define SIFIVE_GPIO_INPUT_EN	0x04
 #define SIFIVE_GPIO_OUTPUT_EN	0x08
 #define SIFIVE_GPIO_OUTPUT_VAL	0x0C
-#define SIFIVE_GPIO_RISE_IE	0x18
-#define SIFIVE_GPIO_RISE_IP	0x1C
-#define SIFIVE_GPIO_FALL_IE	0x20
-#define SIFIVE_GPIO_FALL_IP	0x24
-#define SIFIVE_GPIO_HIGH_IE	0x28
-#define SIFIVE_GPIO_HIGH_IP	0x2C
-#define SIFIVE_GPIO_LOW_IE	0x30
-#define SIFIVE_GPIO_LOW_IP	0x34
-#define SIFIVE_GPIO_OUTPUT_XOR	0x40
+#define SIFIVE_GPIO_RISE_IE		0x24
+#define SIFIVE_GPIO_RISE_IP		0x28
+#define SIFIVE_GPIO_FALL_IE		0x2c
+#define SIFIVE_GPIO_FALL_IP		0x30
+#define SIFIVE_GPIO_HIGH_IE		0x34
+#define SIFIVE_GPIO_HIGH_IP		0x38
+#define SIFIVE_GPIO_LOW_IE		0x3c
+#define SIFIVE_GPIO_LOW_IP		0x40
+#define SIFIVE_GPIO_OUTPUT_XOR	0x58
 
-#define SIFIVE_GPIO_MAX		32
-#define SIFIVE_GPIO_IRQ_OFFSET	7
+#define SIFIVE_GPIO_MAX			32
+#define SIFIVE_GPIO_IRQ_OFFSET	1
 
 struct sifive_gpio {
 	void __iomem		*base;
@@ -79,6 +79,7 @@ static void sifive_gpio_irq_enable(struct irq_data *d)
 	int offset = irqd_to_hwirq(d) % SIFIVE_GPIO_MAX;
 	u32 bit = BIT(offset);
 	unsigned long flags;
+	unsigned int trigger;
 
 	irq_chip_enable_parent(d);
 
@@ -86,11 +87,16 @@ static void sifive_gpio_irq_enable(struct irq_data *d)
 	gc->direction_input(gc, offset);
 
 	spin_lock_irqsave(&gc->bgpio_lock, flags);
+	trigger = chip->trigger[offset];
 	/* Clear any sticky pending interrupts */
-	regmap_write(chip->regs, SIFIVE_GPIO_RISE_IP, bit);
-	regmap_write(chip->regs, SIFIVE_GPIO_FALL_IP, bit);
-	regmap_write(chip->regs, SIFIVE_GPIO_HIGH_IP, bit);
-	regmap_write(chip->regs, SIFIVE_GPIO_LOW_IP, bit);
+	if (trigger & IRQ_TYPE_EDGE_RISING)
+		regmap_update_bits(chip->regs, SIFIVE_GPIO_RISE_IP, bit, 0);
+	if (trigger & IRQ_TYPE_EDGE_FALLING)
+		regmap_update_bits(chip->regs, SIFIVE_GPIO_FALL_IP, bit, 0);
+	if (trigger & IRQ_TYPE_LEVEL_HIGH)
+		regmap_update_bits(chip->regs, SIFIVE_GPIO_HIGH_IP, bit, 0);
+	if (trigger & IRQ_TYPE_LEVEL_LOW)
+		regmap_update_bits(chip->regs, SIFIVE_GPIO_LOW_IP, bit, 0);
 	spin_unlock_irqrestore(&gc->bgpio_lock, flags);
 
 	/* Enable interrupts */
@@ -116,13 +122,20 @@ static void sifive_gpio_irq_eoi(struct irq_data *d)
 	int offset = irqd_to_hwirq(d) % SIFIVE_GPIO_MAX;
 	u32 bit = BIT(offset);
 	unsigned long flags;
+	unsigned int trigger;
 
 	spin_lock_irqsave(&gc->bgpio_lock, flags);
 	/* Clear all pending interrupts */
-	regmap_write(chip->regs, SIFIVE_GPIO_RISE_IP, bit);
-	regmap_write(chip->regs, SIFIVE_GPIO_FALL_IP, bit);
-	regmap_write(chip->regs, SIFIVE_GPIO_HIGH_IP, bit);
-	regmap_write(chip->regs, SIFIVE_GPIO_LOW_IP, bit);
+	trigger = chip->trigger[offset];
+	/* Clear any sticky pending interrupts */
+	if (trigger & IRQ_TYPE_EDGE_RISING)
+		regmap_update_bits(chip->regs, SIFIVE_GPIO_RISE_IP, bit, 0);
+	if (trigger & IRQ_TYPE_EDGE_FALLING)
+		regmap_update_bits(chip->regs, SIFIVE_GPIO_FALL_IP, bit, 0);
+	if (trigger & IRQ_TYPE_LEVEL_HIGH)
+		regmap_update_bits(chip->regs, SIFIVE_GPIO_HIGH_IP, bit, 0);
+	if (trigger & IRQ_TYPE_LEVEL_LOW)
+		regmap_update_bits(chip->regs, SIFIVE_GPIO_LOW_IP, bit, 0);
 	spin_unlock_irqrestore(&gc->bgpio_lock, flags);
 
 	irq_chip_eoi_parent(d);
@@ -145,7 +158,8 @@ static int sifive_gpio_child_to_parent_hwirq(struct gpio_chip *gc,
 					     unsigned int *parent_type)
 {
 	*parent_type = IRQ_TYPE_NONE;
-	*parent = child + SIFIVE_GPIO_IRQ_OFFSET;
+	//*parent = child + SIFIVE_GPIO_IRQ_OFFSET;
+	*parent = 1;	//refer to dts
 	return 0;
 }
 
@@ -183,7 +197,7 @@ static int sifive_gpio_probe(struct platform_device *pdev)
 		return PTR_ERR(chip->regs);
 
 	ngpio = of_irq_count(node);
-	if (ngpio >= SIFIVE_GPIO_MAX) {
+	if (ngpio > SIFIVE_GPIO_MAX) {
 		dev_err(dev, "Too many GPIO interrupts (max=%d)\n",
 			SIFIVE_GPIO_MAX);
 		return -ENXIO;
@@ -194,19 +208,21 @@ static int sifive_gpio_probe(struct platform_device *pdev)
 		dev_err(dev, "no IRQ parent node\n");
 		return -ENODEV;
 	}
+
 	parent = irq_find_host(irq_parent);
 	if (!parent) {
 		dev_err(dev, "no IRQ parent domain\n");
 		return -ENODEV;
 	}
 
+	//set gpio_direction_output gpio_direction_input etc
 	ret = bgpio_init(&chip->gc, dev, 4,
-			 chip->base + SIFIVE_GPIO_INPUT_VAL,
-			 chip->base + SIFIVE_GPIO_OUTPUT_VAL,
-			 NULL,
-			 chip->base + SIFIVE_GPIO_OUTPUT_EN,
-			 chip->base + SIFIVE_GPIO_INPUT_EN,
-			 0);
+			chip->base + SIFIVE_GPIO_INPUT_VAL,
+			chip->base + SIFIVE_GPIO_OUTPUT_VAL,
+			NULL,
+			chip->base + SIFIVE_GPIO_OUTPUT_EN,
+			chip->base + SIFIVE_GPIO_INPUT_EN,
+			BGPIOF_READ_OUTPUT_REG_SET);
 	if (ret) {
 		dev_err(dev, "unable to init generic GPIO\n");
 		return ret;
@@ -217,10 +233,14 @@ static int sifive_gpio_probe(struct platform_device *pdev)
 	regmap_write(chip->regs, SIFIVE_GPIO_FALL_IE, 0);
 	regmap_write(chip->regs, SIFIVE_GPIO_HIGH_IE, 0);
 	regmap_write(chip->regs, SIFIVE_GPIO_LOW_IE, 0);
+	regmap_write(chip->regs, SIFIVE_GPIO_RISE_IP, 0);
+	regmap_write(chip->regs, SIFIVE_GPIO_FALL_IP, 0);
+	regmap_write(chip->regs, SIFIVE_GPIO_HIGH_IP, 0);
+	regmap_write(chip->regs, SIFIVE_GPIO_LOW_IP, 0);
 	chip->irq_state = 0;
 
 	chip->gc.base = -1;
-	chip->gc.ngpio = ngpio;
+	chip->gc.ngpio = 32;
 	chip->gc.label = dev_name(dev);
 	chip->gc.parent = dev;
 	chip->gc.owner = THIS_MODULE;
