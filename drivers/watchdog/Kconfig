@@ -295,6 +295,17 @@ config WM8350_WATCHDOG
 	  Support for the watchdog in the WM8350 AudioPlus PMIC.  When
 	  the watchdog triggers the system will be reset.
 
+config FSL_WATCHDOG
+	tristate "FSL Watchdog"
+	depends on OF_GPIO
+	select WATCHDOG_CORE
+	help
+	  Say Y here to include support for the FSL watchdog timer
+	  based on VeriSilicon IP core. This will reboot your system when
+	  the timeout is reached.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called fsl_wdt.
 config XILINX_WATCHDOG
 	tristate "Xilinx Watchdog timer"
 	depends on HAS_IOMEM
