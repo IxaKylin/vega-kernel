@@ -19,7 +19,7 @@
 #define SIFIVE_SPI_DRIVER_NAME           "sifive_spi"
 
 #define SIFIVE_SPI_MAX_CS                32
-#define SIFIVE_SPI_DEFAULT_DEPTH         8
+#define SIFIVE_SPI_DEFAULT_DEPTH         6
 #define SIFIVE_SPI_DEFAULT_MAX_BITS      8
 
 /* register offsets */
@@ -98,12 +98,12 @@ struct sifive_spi {
 
 static void sifive_spi_write(struct sifive_spi *spi, int offset, u32 value)
 {
-	iowrite32(value, spi->regs + offset);
+	return writel_cpu(value, spi->regs + offset);
 }
 
 static u32 sifive_spi_read(struct sifive_spi *spi, int offset)
 {
-	return ioread32(spi->regs + offset);
+	return readl_cpu(spi->regs + offset);
 }
 
 static void sifive_spi_init(struct sifive_spi *spi)
@@ -138,10 +138,11 @@ sifive_spi_prepare_message(struct spi_master *master, struct spi_message *msg)
 		spi->cs_inactive &= ~BIT(device->chip_select);
 	else
 		spi->cs_inactive |= BIT(device->chip_select);
+
 	sifive_spi_write(spi, SIFIVE_SPI_REG_CSDEF, spi->cs_inactive);
 
 	/* Select the correct device */
-	sifive_spi_write(spi, SIFIVE_SPI_REG_CSID, device->chip_select);
+	sifive_spi_write(spi, SIFIVE_SPI_REG_CSID, 1);
 
 	/* Set clock mode */
 	sifive_spi_write(spi, SIFIVE_SPI_REG_SCKMODE,
@@ -169,11 +170,6 @@ sifive_spi_prep_transfer(struct sifive_spi *spi, struct spi_device *device,
 {
 	u32 cr;
 	unsigned int mode;
-
-	/* Calculate and program the clock rate */
-	cr = DIV_ROUND_UP(clk_get_rate(spi->clk) >> 1, t->speed_hz) - 1;
-	cr &= SIFIVE_SPI_SCKDIV_DIV_MASK;
-	sifive_spi_write(spi, SIFIVE_SPI_REG_SCKDIV, cr);
 
 	mode = max_t(unsigned int, t->rx_nbits, t->tx_nbits);
 
@@ -323,6 +319,20 @@ static int sifive_spi_probe(struct platform_device *pdev)
 	if (irq < 0) {
 		ret = irq;
 		goto put_master;
+	}
+
+	/* Read spi-max-frequency from device tree and configure clock */
+	struct device_node *flash_node = of_get_next_child(pdev->dev.of_node, NULL);
+
+	if (flash_node) {
+		u32 flash_clk;
+
+		of_property_read_u32(flash_node, "spi-max-frequency",
+				     &flash_clk);
+		flash_clk = (DIV_ROUND_UP(clk_get_rate(spi->clk) >> 1,
+					  flash_clk) - 1) &
+			    SIFIVE_SPI_SCKDIV_DIV_MASK;
+		sifive_spi_write(spi, SIFIVE_SPI_REG_SCKDIV, flash_clk);
 	}
 
 	/* Optional parameters */
